@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mantar Kartları</title>
+<meta name="description" content="Türkiye'deki mantar türlerini gerçek gözlem fotoğraflarıyla öğrenme kartları. İl ve bölgeye göre ağırlıklı.">
+<meta name="theme-color" content="#3f5a2e" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171812" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mantar">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.inaturalist.org">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400;1,7..72,600&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="src/app.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner" id="net" hidden>Çevrimdışısın. Daha önce görülen türler ve fotoğraflar önbellekten geliyor.</div>
+  <button type="button" class="banner action" id="update" hidden>Yeni sürüm hazır. Yenilemek için dokun.</button>
+  <div class="banner" id="iosHint" hidden>Ana ekrana eklemek için Safari'de Paylaş → Ana Ekrana Ekle. <button type="button" class="link">Tamam</button></div>
+
+  <header>
+    <h1>Mantar Kartları<small id="placeLabel">Türkiye · iNaturalist gözlemleri</small></h1>
+    <div class="head-right">
+      <button type="button" class="btn small" id="install" hidden>Yükle</button>
+      <div class="score"><b id="sc">0/0</b><br><span id="streak">seri 0</span></div>
+    </div>
+  </header>
+
+  <div class="where">
+    <select id="region" aria-label="Bölge"></select>
+    <select id="province" aria-label="İl"></select>
+  </div>
+
+  <details class="settings">
+    <summary>Ayarlar</summary>
+    <div class="body">
+      <label>Mod
+        <div class="seg" id="mode">
+          <button type="button" data-v="mc" aria-pressed="true">Çoktan seçmeli</button>
+          <button type="button" data-v="flip" aria-pressed="false">Kartı çevir</button>
+        </div>
+      </label>
+      <label>Şıklar
+        <div class="seg" id="diff">
+          <button type="button" data-v="easy" aria-pressed="false">Karışık</button>
+          <button type="button" data-v="hard" aria-pressed="true">Benzer türler</button>
+        </div>
+      </label>
+      <label for="alpha">Yaygın türlere ağırlık: <span id="alphaV"></span>
+        <input type="range" id="alpha" min="0" max="100" step="5" value="70">
+        <span class="hint">Sağa çektikçe seçtiğin yerde çok gözlenen türler daha sık gelir; solda tüm türler eşit.</span>
+      </label>
+      <label for="pool">Tür havuzu: en çok gözlenen <span id="poolV"></span> tür
+        <input type="range" id="pool" min="20" max="200" step="10" value="80">
+      </label>
+      <label>Sadece
+        <div class="seg" id="filter">
+          <button type="button" data-v="all" aria-pressed="true">Hepsi</button>
+          <button type="button" data-v="food" aria-pressed="false">Yenir + benzerleri</button>
+          <button type="button" data-v="danger" aria-pressed="false">Zehirliler</button>
+        </div>
+      </label>
+      <button type="button" class="btn" id="resetStats">İstatistikleri sıfırla</button>
+    </div>
+  </details>
+
+  <div class="plate" id="plate">
+    <span class="tag" id="obsTag" hidden></span>
+    <img id="photo" alt="" hidden>
+    <div class="status" id="status">Türler yükleniyor…</div>
+    <button type="button" class="more" id="another" hidden>Başka foto ↻</button>
+  </div>
+  <div class="credit" id="credit"></div>
+
+  <div class="opts" id="opts"></div>
+  <div class="flipbar" id="flipbar" hidden>
+    <button type="button" class="btn" id="reveal">Kartı çevir</button>
+  </div>
+  <div class="flipbar" id="selfgrade" hidden>
+    <button type="button" class="btn" id="gotWrong">Bilemedim</button>
+    <button type="button" class="btn primary" id="gotRight">Bildim</button>
+  </div>
+
+  <section class="label" id="label" hidden></section>
+
+  <div class="next"><button type="button" class="btn primary" id="nextBtn" hidden>Sonraki kart →</button></div>
+
+  <p class="warning"><b>Toplama kararı için kullanma.</b> Bu bir öğrenme aracı. Fotoğraftan tür tayini güvenilir değildir; ölümcül türlerin yenen benzerleri vardır. Toplayacağın mantarı mutlaka uzman birine gösterip elden teşhis ettir. Fotoğraflar ve gözlem sayıları iNaturalist'ten (araştırma düzeyi, lisanslı), açıklamalar Wikipedia'dan gelir.</p>
+</div>
+
+<div class="zoom" id="zoom" hidden><img id="zoomImg" alt=""></div>
+</body>
+</html>
