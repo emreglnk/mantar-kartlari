@@ -33,6 +33,7 @@ Service worker yalnızca https veya localhost'ta çalışır. `file://` ile açm
 - **Yenilebilirlik verisi güvenlik açısından kritik.** `src/edibility.js`'e tür eklerken veya değiştirirken emin olmadığın bilgiyi yazma; şüphede `dikkat` kategorisini kullan. Bir türü asla zehirli benzeri olduğu halde düz `yenir` olarak işaretleme. Sayfadaki "toplama kararı için kullanma" uyarısı kalmalı.
 - **Fotoğraf atfı zorunlu.** iNaturalist fotoğrafları CC lisanslı; her gösterilen fotoğrafın altında `attribution` metni ve gözlem linki bulunmalı. `photo_licensed=true` filtresini kaldırma.
 - **iNaturalist API nezaketi:** dakikada ~60 istek sınırı var. `inat.js`'teki bellek içi önbelleği ve 429 geri çekilmesini koru; döngü içinde paralel istek patlatma. Bölge seçimi illeri sırayla çözer ve sonucu `localStorage`'da (`mk:placeIds`) tutar.
+- **Yalnızca büyük mantarlar.** Tür listesi `inat.js`'teki `MACRO_TAXA` sınıflarıyla (Agaricomycetes, Pezizomycetes, Dacrymycetes) sınırlı. `iconic_taxa=Fungi`'ye dönme: likenler, pas ve külleme mantarları gelir.
 - Kullanıcıya görünen tüm metinler Türkçe.
 - Renkleri doğrudan bileşen kurallarına yazma; `:root` token'larını kullan, koyu temada da tanımla.
 

@@ -3,7 +3,7 @@
 //   api:   iNaturalist API yanıtları (network-first, çevrimdışında önbellekten)
 //   img:   gözlem fotoğrafları ve yazı tipleri (cache-first, en fazla IMG_MAX kayıt)
 // Uygulama dosyalarından birini değiştirdiğinde VERSION'ı artır.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `mk-shell-${VERSION}`;
 const API = "mk-api";
 const IMG = "mk-img";

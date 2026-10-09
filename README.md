@@ -2,7 +2,8 @@
 
 Türkiye'deki mantar türlerini gerçek fotoğraflarla öğrenmek için flash kart uygulaması (PWA).
 
-- Fotoğraflar ve gözlem sayıları [iNaturalist](https://www.inaturalist.org)'in araştırma düzeyindeki, lisanslı gözlemlerinden gelir. Her soruda farklı bir fotoğraf gösterilir.
+- Fotoğraflar ve gözlem sayıları [iNaturalist](https://www.inaturalist.org)'in araştırma düzeyindeki, lisanslı gözlemlerinden gelir. Her kartta türün farklı gözlemlerinden 10'a kadar fotoğraf kaydırılarak görülebilir.
+- Yalnızca gözle görülen büyük mantarlar (şapkalılar, boletler, raf ve puf mantarları, kuzugöbekleri vb.); likenler, pas ve külleme mantarları yok.
 - İl veya bölge seçilebilir; sorular o yerde çok gözlenen türlere ağırlık verir.
 - Çoktan seçmeli ve kart çevirme modları, yanlış bilinen türleri daha sık soran tekrar sistemi.
 - Ana ekrana yüklenebilir; görülen türler ve fotoğraflar çevrimdışı da açılır.
