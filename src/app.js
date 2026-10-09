@@ -2,8 +2,10 @@ import { REGIONS, ALIASES } from "./regions.js";
 import { CAT, FOODISH, DANGER, edibility } from "./edibility.js";
 import { store } from "./store.js";
 import {
-  getTurkeyId, resolveTurkey, resolveProvince, speciesCounts, taxonPhotos, taxonSummary,
+  fold, getTurkeyId, resolveTurkey, resolveProvince, speciesCounts, taxonPhotos, taxonSummary,
 } from "./inat.js";
+
+const PER_CARD = 10; // bir kartta kaydırılabilen en fazla fotoğraf
 
 /* ---------- Durum ---------- */
 const S = {
@@ -20,7 +22,8 @@ const S = {
   allSpecies: [],
   species: [],
   current: null,
-  curPhoto: null,
+  gallery: [], // bu kartın fotoğrafları
+  slide: -1, // galeride görünen fotoğrafın sırası
   recent: [],
   shownPhotos: new Set(),
   answered: false,
@@ -29,16 +32,27 @@ const S = {
 /* ---------- DOM ---------- */
 const $ = (id) => document.getElementById(id);
 const els = {
-  region: $("region"), province: $("province"), photo: $("photo"), status: $("status"),
-  another: $("another"), obsTag: $("obsTag"), credit: $("credit"), opts: $("opts"),
-  label: $("label"), nextBtn: $("nextBtn"), flipbar: $("flipbar"), selfgrade: $("selfgrade"),
-  placeLabel: $("placeLabel"), sc: $("sc"), streak: $("streak"), net: $("net"),
+  region: $("region"), province: $("province"), track: $("track"), status: $("status"),
+  counter: $("counter"), dots: $("dots"), prevPh: $("prevPh"), nextPh: $("nextPh"), credit: $("credit"),
+  prompt: $("prompt"), opts: $("opts"), label: $("label"), actionbar: $("actionbar"),
+  reveal: $("reveal"), gotWrong: $("gotWrong"), gotRight: $("gotRight"), nextBtn: $("nextBtn"),
+  placeLabel: $("placeLabel"), sc: $("sc"), streak: $("streak"), streakPill: $("streakPill"),
+  net: $("net"), sheet: $("sheet"),
 };
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const icon = (name, cls = "ic") => `<svg class="${cls}"><use href="#i-${name}"/></svg>`;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motion = () => (reduceMotion ? "auto" : "smooth");
+
 function setStatus(m) {
   els.status.hidden = false;
   els.status.textContent = m;
+}
+/** Eylem çubuğunda yalnızca verilen düğmeleri gösterir; hiçbiri yoksa çubuğu gizler. */
+function setActions(...show) {
+  for (const b of [els.reveal, els.gotWrong, els.gotRight, els.nextBtn]) b.hidden = !show.includes(b);
+  els.actionbar.hidden = !show.length;
 }
 
 /* ---------- Yer ---------- */
@@ -64,10 +78,9 @@ async function currentPlaceIds() {
 const withEd = (s) => ({ ...s, ed: edibility(s.name) });
 
 async function loadSpecies() {
+  resetCard();
+  clearGallery();
   setStatus("Türler yükleniyor…");
-  els.opts.innerHTML = "";
-  els.label.hidden = true;
-  els.nextBtn.hidden = true;
   const tr = getTurkeyId();
   let ids = await currentPlaceIds();
   let label = S.province || (S.region === "Tümü" ? "Türkiye" : S.region + " Bölgesi");
@@ -163,79 +176,169 @@ async function photosFor(t) {
   return uniq;
 }
 
-async function showPhoto(t) {
-  els.photo.hidden = true;
-  els.another.hidden = true;
-  els.obsTag.hidden = true;
+/** Karta girecek fotoğraflar: önce görülmemişler, önce her gözlemden bir tane (farklı bireyler). */
+function pickGallery(photos) {
+  const seen = (p) => S.shownPhotos.has(p.pid);
+  const ordered = shuffle(photos).sort((a, b) => seen(a) - seen(b));
+  const firsts = new Map();
+  for (const p of ordered) if (!firsts.has(p.obsId)) firsts.set(p.obsId, p);
+  let out = [...firsts.values()];
+  if (out.length < PER_CARD) out = out.concat(ordered.filter((p) => !out.includes(p)));
+  return out.slice(0, PER_CARD);
+}
+
+const preload = (url) =>
+  new Promise((res) => {
+    const im = new Image();
+    im.onload = () => res(true);
+    im.onerror = () => res(false);
+    im.src = url;
+  });
+const photoMeta = (p) => (p ? `${p.place || "konum gizli"}${p.date ? " · " + p.date : ""}` : "");
+
+function clearGallery() {
+  S.gallery = [];
+  S.slide = -1;
+  els.track.innerHTML = "";
+  els.dots.innerHTML = "";
+  els.counter.hidden = els.prevPh.hidden = els.nextPh.hidden = true;
   els.credit.textContent = "";
+}
+
+async function showGallery(t) {
+  clearGallery();
   setStatus("Fotoğraf yükleniyor…");
   let photos;
   try {
     photos = await photosFor(t);
   } catch (e) {
-    setStatus(navigator.onLine ? e.message : "Çevrimdışısın ve bu türün fotoğrafları önbellekte yok.");
+    if (S.current === t)
+      setStatus(navigator.onLine ? e.message : "Çevrimdışısın ve bu türün fotoğrafları önbellekte yok.");
     return false;
   }
+  if (S.current !== t) return false;
   if (!photos.length) {
     setStatus("Bu tür için lisanslı fotoğraf bulunamadı.");
     return false;
   }
-  let fresh = photos.filter((p) => !S.shownPhotos.has(p.pid));
-  if (!fresh.length) {
-    photos.forEach((p) => S.shownPhotos.delete(p.pid));
-    fresh = photos;
-  }
-  const p = fresh[Math.floor(Math.random() * fresh.length)];
-  S.shownPhotos.add(p.pid);
-  S.curPhoto = p;
-  const loaded = await new Promise((res) => {
-    els.photo.onload = () => res(true);
-    els.photo.onerror = () => res(false);
-    els.photo.src = p.url;
-  });
-  if (!loaded) {
-    setStatus(navigator.onLine ? "Fotoğraf açılamadı." : "Bu fotoğraf önbellekte yok; çevrimiçi olunca gelir.");
-    els.another.hidden = photos.length < 2;
+  const list = pickGallery(photos);
+  // İlk fotoğraf açılmadan şıkları gösterme; açılamayanı at, sıradakini dene.
+  while (list.length && !(await preload(list[0].url))) list.shift();
+  if (S.current !== t) return false;
+  if (!list.length) {
+    setStatus(navigator.onLine ? "Fotoğraflar açılamadı." : "Bu türün fotoğrafları önbellekte yok; çevrimiçi olunca gelir.");
     return false;
   }
-  els.photo.alt = "Tahmin edilecek mantar fotoğrafı";
-  els.photo.hidden = false;
+  S.gallery = list;
+  const n = list.length;
+  els.track.innerHTML = list
+    .map(
+      (p, i) =>
+        `<figure class="slide"><img class="bg" alt="" aria-hidden="true"><img class="ph" alt="Tahmin edilecek mantar, fotoğraf ${i + 1}/${n}"></figure>`
+    )
+    .join("");
+  els.dots.innerHTML = n > 1 ? "<i></i>".repeat(n) : "";
+  els.track.scrollLeft = 0;
+  setSlide(0);
   els.status.hidden = true;
-  els.another.hidden = photos.length < 2;
-  els.obsTag.textContent = `${photos.length} fotoğraftan biri`;
-  els.obsTag.hidden = false;
-  els.credit.innerHTML = `${esc(p.attr)} · <a href="https://www.inaturalist.org/observations/${p.obsId}" target="_blank" rel="noopener">gözlem</a>`;
   return true;
 }
 
+/** Fotoğrafı yalnızca görünür olunca ya da komşusu görünürken yükler. */
+function loadSlide(i) {
+  const fig = els.track.children[i];
+  if (!fig || fig.dataset.loaded) return;
+  fig.dataset.loaded = "1";
+  const url = S.gallery[i].url;
+  const ph = fig.querySelector(".ph");
+  ph.onload = () => ph.classList.add("loaded");
+  ph.onerror = () => fig.classList.add("broken");
+  ph.src = url;
+  fig.querySelector(".bg").src = url;
+}
+
+function setSlide(i) {
+  if (i === S.slide || !S.gallery[i]) return;
+  S.slide = i;
+  const n = S.gallery.length, p = S.gallery[i];
+  loadSlide(i);
+  loadSlide(i + 1);
+  loadSlide(i - 1);
+  S.shownPhotos.add(p.pid);
+  els.counter.textContent = `${i + 1} / ${n}`;
+  els.counter.hidden = els.prevPh.hidden = els.nextPh.hidden = n < 2;
+  els.prevPh.disabled = i === 0;
+  els.nextPh.disabled = i === n - 1;
+  [...els.dots.children].forEach((d, j) => d.classList.toggle("on", j === i));
+  els.credit.innerHTML = `${esc(p.attr)} · <a href="https://www.inaturalist.org/observations/${p.obsId}" target="_blank" rel="noopener">gözlem</a>`;
+  const pm = $("photoMeta");
+  if (pm) pm.textContent = photoMeta(p);
+}
+
+function goSlide(i) {
+  if (!S.gallery.length) return;
+  i = Math.max(0, Math.min(S.gallery.length - 1, i));
+  els.track.scrollTo({ left: i * els.track.clientWidth, behavior: motion() });
+}
+
+let scrollRaf = 0;
+els.track.addEventListener(
+  "scroll",
+  () => {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      const w = els.track.clientWidth;
+      if (w) setSlide(Math.round(els.track.scrollLeft / w));
+    });
+  },
+  { passive: true }
+);
+addEventListener("resize", () => {
+  if (S.slide >= 0) els.track.scrollLeft = S.slide * els.track.clientWidth;
+});
+els.prevPh.onclick = () => goSlide(S.slide - 1);
+els.nextPh.onclick = () => goSlide(S.slide + 1);
+
 /* ---------- Kart akışı ---------- */
-async function nextCard() {
-  if (!S.species.length) return;
+function resetCard() {
   S.answered = false;
   els.label.hidden = true;
-  els.nextBtn.hidden = true;
+  els.label.innerHTML = "";
   els.opts.innerHTML = "";
-  els.flipbar.hidden = true;
-  els.selfgrade.hidden = true;
+  els.prompt.hidden = true;
+  setActions();
+}
+
+async function nextCard() {
+  if (!S.species.length) return;
+  resetCard();
   const t = pickTaxon();
   S.current = t;
-  if (!(await showPhoto(t))) {
-    els.nextBtn.hidden = false;
+  if (!(await showGallery(t))) {
+    if (S.current === t) setActions(els.nextBtn);
     return;
   }
   if (S.current !== t) return; // bu arada başka kart istendi
+  els.prompt.hidden = false;
   if (S.mode === "mc") {
-    for (const s of distractors(t)) {
+    els.prompt.textContent = "Bu hangi mantar?";
+    distractors(t).forEach((s, i) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "opt";
       b.dataset.id = s.id;
       const tr = displayName(s);
-      b.innerHTML = `<span class="tr">${esc(tr)}</span>${tr !== s.name ? `<span class="la">${esc(s.name)}</span>` : ""}`;
+      b.innerHTML =
+        `<span class="key">${i + 1}</span><span class="txt"><span class="tr">${esc(tr)}</span>` +
+        `${tr !== s.name ? `<span class="la">${esc(s.name)}</span>` : ""}</span>`;
       b.onclick = () => answer(s.id === t.id, b);
       els.opts.appendChild(b);
-    }
-  } else els.flipbar.hidden = false;
+    });
+  } else {
+    els.prompt.textContent = "Adını biliyor musun? Fotoğrafları kaydırıp bak, sonra kartı çevir.";
+    setActions(els.reveal);
+  }
   prefetchNext();
 }
 
@@ -244,12 +347,14 @@ function answer(right, btn) {
   S.answered = true;
   for (const b of els.opts.querySelectorAll(".opt")) {
     b.disabled = true;
-    if (+b.dataset.id === S.current.id) b.classList.add("right");
+    const isRight = +b.dataset.id === S.current.id;
+    if (isRight) b.classList.add("right");
+    else b.classList.add(b === btn ? "wrong" : "dim");
+    if (isRight || b === btn) b.insertAdjacentHTML("beforeend", icon(isRight ? "check" : "x", "ic mark"));
   }
-  if (btn && !right) btn.classList.add("wrong");
   record(right);
-  showLabel();
-  els.nextBtn.hidden = false;
+  showLabel(right);
+  setActions(els.nextBtn);
   els.nextBtn.focus({ preventScroll: true });
 }
 
@@ -263,41 +368,66 @@ function record(right) {
     S.score.c++;
     S.score.streak++;
   } else S.score.streak = 0;
+  showScore();
+}
+function showScore() {
   els.sc.textContent = `${S.score.c}/${S.score.n}`;
-  els.streak.textContent = `seri ${S.score.streak}`;
+  els.streak.textContent = S.score.streak;
+  els.streakPill.hidden = S.score.streak < 2;
 }
 
-async function showLabel() {
-  const t = S.current, e = t.ed, p = S.curPhoto, c = CAT[e.k];
+/** Sonuç kartı. verdict: çoktan seçmelide doğru/yanlış; kart çevirmede undefined. */
+async function showLabel(verdict) {
+  const t = S.current, e = t.ed, c = CAT[e.k];
   const st = S.stats[t.id] || { c: 0, w: 0 };
   const tr = displayName(t);
+  const alt = t.common && ![fold(tr), fold(t.name)].includes(fold(t.common)) ? t.common : "";
+  const link = (href, text, id = "") =>
+    `<a class="chip"${id ? ` id="${id}"` : ""} href="${href}" target="_blank" rel="noopener">${text}${icon("ext")}</a>`;
   els.label.innerHTML = `
-    <div class="names"><h2>${esc(tr)}</h2>${tr !== t.name ? `<div class="la">${esc(t.name)}</div>` : ""}
-      ${t.common && t.common !== tr ? `<div class="fam">Diğer adı: ${esc(t.common)}</div>` : ""}</div>
-    <div><span class="badge ${c[1]}">${c[0]}</span>${e.genus ? ` <span class="hint">cins düzeyinde bilgi</span>` : ""}</div>
-    ${e.note ? `<div class="note">${esc(e.note)}</div>` : ""}
-    <dl class="meta">
+    ${verdict === undefined ? "" : `<div class="verdict ${verdict ? "ok" : "bad"}">${icon(verdict ? "check" : "x", "ic sm")}${verdict ? "Doğru" : "Yanlış"}</div>`}
+    <div class="names">
+      <h2>${esc(tr)}</h2>
+      ${tr !== t.name ? `<div class="latin">${esc(t.name)}</div>` : ""}
+      ${alt ? `<div class="alt">Diğer adı: ${esc(alt)}</div>` : ""}
+    </div>
+    <div class="badge-row"><span class="badge ${c[1]}">${c[0]}</span>${e.genus ? `<span class="hint">cins düzeyinde bilgi</span>` : ""}</div>
+    ${e.note ? `<p class="note">${esc(e.note)}</p>` : ""}
+    <dl class="facts">
       <dt>Seçili yerde</dt><dd>${t.count >= 1 ? t.count + " doğrulanmış gözlem" : "yerel gözlem yok"}</dd>
-      <dt>Bu foto</dt><dd>${esc(p.place || "konum gizli")}${p.date ? " · " + esc(p.date) : ""}</dd>
+      <dt>Bu foto</dt><dd id="photoMeta">${esc(photoMeta(S.gallery[S.slide]))}</dd>
       <dt>Senin karnen</dt><dd>${st.c} doğru · ${st.w} yanlış</dd>
     </dl>
-    <div class="wiki" id="wiki">Açıklama yükleniyor…</div>
+    <p class="wiki" id="wiki">Açıklama yükleniyor…</p>
+    <button type="button" class="more-link" id="wikiMore" hidden>Devamını oku</button>
     <div class="links">
-      <a href="https://www.inaturalist.org/taxa/${t.id}" target="_blank" rel="noopener">iNaturalist</a>
-      <a id="wikiLink" href="https://tr.wikipedia.org/wiki/${encodeURIComponent(t.name.replace(/ /g, "_"))}" target="_blank" rel="noopener">Wikipedia</a>
-      <a href="https://www.inaturalist.org/observations?taxon_id=${t.id}&place_id=${S.placeQuery}" target="_blank" rel="noopener">Haritada gözlemler</a>
+      ${link(`https://www.inaturalist.org/taxa/${t.id}`, "iNaturalist")}
+      ${link(`https://tr.wikipedia.org/wiki/${encodeURIComponent(t.name.replace(/ /g, "_"))}`, "Wikipedia", "wikiLink")}
+      ${link(`https://www.inaturalist.org/observations?taxon_id=${t.id}&place_id=${S.placeQuery}`, "Haritada gözlemler")}
     </div>`;
   els.label.hidden = false;
-  els.flipbar.hidden = true;
+  // Sonuç kartının başı ekranın üst yarısına gelsin; fotoğraf ve şıklar kısmen görünür kalır.
+  const top = els.label.getBoundingClientRect().top, want = innerHeight * 0.4;
+  if (top > want) scrollBy({ top: top - want, behavior: motion() });
   try {
     const sum = await taxonSummary(t.id);
     const w = $("wiki");
     if (!w || S.current !== t) return;
     w.textContent = sum ? sum.text : "Wikipedia özeti yok.";
     if (sum && sum.url) $("wikiLink").href = sum.url;
+    w.classList.add("clamp");
+    if (w.scrollHeight > w.clientHeight + 2) {
+      const more = $("wikiMore");
+      more.hidden = false;
+      more.onclick = () => {
+        w.classList.remove("clamp");
+        more.hidden = true;
+      };
+    } else w.classList.remove("clamp");
   } catch {
     const w = $("wiki");
-    if (w) w.textContent = navigator.onLine ? "Açıklama alınamadı." : "Açıklama çevrimdışı önbellekte yok.";
+    if (w && S.current === t)
+      w.textContent = navigator.onLine ? "Açıklama alınamadı." : "Açıklama çevrimdışı önbellekte yok.";
   }
 }
 
@@ -313,7 +443,16 @@ function prefetchNext() {
     .catch(() => {});
 }
 
-/* ---------- Kontroller ---------- */
+/* ---------- Ayarlar sayfası ---------- */
+const openSheet = () => els.sheet.showModal();
+$("placeBtn").onclick = openSheet;
+$("settingsBtn").onclick = openSheet;
+$("sheetClose").onclick = () => els.sheet.close();
+// Arka plana (dialog'un kendi kutusuna, içeriğin dışına) dokunulunca kapat.
+els.sheet.addEventListener("click", (e) => {
+  if (e.target === els.sheet) els.sheet.close();
+});
+
 function fillRegions() {
   els.region.innerHTML = `<option>Tümü</option>` + Object.keys(REGIONS).map((r) => `<option>${r}</option>`).join("");
   els.region.value = S.region in REGIONS ? S.region : "Tümü";
@@ -373,7 +512,11 @@ seg("mode", "mode", () => nextCard());
 seg("diff", "diff");
 seg("filter", "filter", () => {
   S.species = applyFilter(S.allSpecies);
-  if (S.species.length < 4) return setStatus("Bu filtrede yeterli tür yok.");
+  if (S.species.length < 4) {
+    resetCard();
+    clearGallery();
+    return setStatus("Bu filtrede yeterli tür yok.");
+  }
   S.recent = [];
   nextCard();
 });
@@ -400,34 +543,37 @@ $("resetStats").onclick = () => {
   S.stats = {};
   store.set("stats", {});
   S.score = { c: 0, n: 0, streak: 0 };
-  els.sc.textContent = "0/0";
-  els.streak.textContent = "seri 0";
+  showScore();
 };
 
+/* ---------- Eylemler, yakınlaştırma, klavye ---------- */
 els.nextBtn.onclick = () => nextCard();
-els.another.onclick = () => showPhoto(S.current);
-$("reveal").onclick = () => {
+els.reveal.onclick = () => {
   S.answered = true;
-  els.flipbar.hidden = true;
-  els.selfgrade.hidden = false;
   showLabel();
+  setActions(els.gotWrong, els.gotRight);
 };
-$("gotRight").onclick = () => grade(true);
-$("gotWrong").onclick = () => grade(false);
+els.gotRight.onclick = () => grade(true);
+els.gotWrong.onclick = () => grade(false);
 function grade(right) {
   record(right);
-  els.selfgrade.hidden = true;
   nextCard();
 }
 
-els.photo.onclick = () => {
-  $("zoomImg").src = els.photo.src;
+els.track.onclick = (e) => {
+  const img = e.target.closest(".ph");
+  if (!img || !img.src) return;
+  $("zoomImg").src = img.src;
   $("zoom").hidden = false;
 };
 $("zoom").onclick = () => ($("zoom").hidden = true);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") $("zoom").hidden = true;
-  if (S.mode === "mc" && !S.answered && /^[1-4]$/.test(e.key)) {
+  if (els.sheet.open || e.target.closest("select,input,textarea")) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    e.preventDefault();
+    goSlide(S.slide + (e.key === "ArrowRight" ? 1 : -1));
+  } else if (S.mode === "mc" && !S.answered && /^[1-4]$/.test(e.key)) {
     const b = els.opts.querySelectorAll(".opt")[+e.key - 1];
     b && b.click();
   }

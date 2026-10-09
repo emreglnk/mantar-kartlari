@@ -80,10 +80,16 @@ export async function resolveProvince(name, aliases = []) {
   return null;
 }
 
-/** Bir yerde (virgüllü yer kimlikleri) doğrulanmış gözlemi olan mantar türleri, gözlem sayısıyla. */
+// Yalnızca gözle görülen büyük mantarlar (makrofunguslar). iconic_taxa=Fungi likenleri, pas ve külleme
+// mantarlarını da getiriyordu. Agaricomycetes: şapkalılar, boletler, raf, puf, kafes mantarları vb.
+// Pezizomycetes: kuzugöbeği, sahte kuzugöbeği, trüf, kadeh mantarları. Dacrymycetes: jöle mantarları.
+// Tremellomycetes bilerek yok: içinde maya türleri de var.
+export const MACRO_TAXA = [50814, 152032, 53277];
+
+/** Bir yerde (virgüllü yer kimlikleri) doğrulanmış gözlemi olan büyük mantar türleri, gözlem sayısıyla. */
 export async function speciesCounts(placeQuery, perPage) {
   const r = await api(
-    `/observations/species_counts?place_id=${placeQuery}&iconic_taxa=Fungi&quality_grade=research&photos=true&locale=tr&per_page=${perPage}`
+    `/observations/species_counts?place_id=${placeQuery}&taxon_id=${MACRO_TAXA.join(",")}&quality_grade=research&photos=true&locale=tr&per_page=${perPage}`
   );
   return (r.results || [])
     .filter((x) => x.taxon && x.taxon.rank === "species")

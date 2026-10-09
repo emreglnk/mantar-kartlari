@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mantar Kartları</title>
 <meta name="description" content="Türkiye'deki mantar türlerini gerçek gözlem fotoğraflarıyla öğrenme kartları. İl ve bölgeye göre ağırlıklı.">
-<meta name="theme-color" content="#3f5a2e" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#171812" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -16,85 +16,137 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://api.inaturalist.org">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400;1,7..72,600&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap">
 <link rel="stylesheet" href="styles.css">
 <script type="module" src="src/app.js"></script>
 </head>
 <body>
-<div class="wrap">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.3 1.6 1.4 2.8 2.5 2.8"/></symbol>
+</svg>
+
+<div class="app">
   <div class="banner" id="net" hidden>Çevrimdışısın. Daha önce görülen türler ve fotoğraflar önbellekten geliyor.</div>
   <button type="button" class="banner action" id="update" hidden>Yeni sürüm hazır. Yenilemek için dokun.</button>
   <div class="banner" id="iosHint" hidden>Ana ekrana eklemek için Safari'de Paylaş → Ana Ekrana Ekle. <button type="button" class="link">Tamam</button></div>
 
-  <header>
-    <h1>Mantar Kartları<small id="placeLabel">Türkiye · iNaturalist gözlemleri</small></h1>
-    <div class="head-right">
-      <button type="button" class="btn small" id="install" hidden>Yükle</button>
-      <div class="score"><b id="sc">0/0</b><br><span id="streak">seri 0</span></div>
+  <header class="top">
+    <div class="brand">
+      <h1>Mantar Kartları</h1>
+      <button type="button" class="place" id="placeBtn" aria-label="Konumu değiştir">
+        <svg class="ic"><use href="#i-pin"/></svg>
+        <span id="placeLabel">Türkiye</span>
+        <svg class="ic sm"><use href="#i-down"/></svg>
+      </button>
+    </div>
+    <div class="top-right">
+      <div class="score" aria-label="Skor">
+        <span class="pill" title="Doğru / toplam"><svg class="ic sm"><use href="#i-check"/></svg><b id="sc">0/0</b></span>
+        <span class="pill streak" id="streakPill" title="Seri" hidden><svg class="ic sm"><use href="#i-flame"/></svg><b id="streak">0</b></span>
+      </div>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="Ayarlar"><svg class="ic"><use href="#i-sliders"/></svg></button>
     </div>
   </header>
 
-  <div class="where">
-    <select id="region" aria-label="Bölge"></select>
-    <select id="province" aria-label="İl"></select>
-  </div>
+  <main>
+    <section class="viewer" id="viewer" aria-roledescription="carousel" aria-label="Fotoğraflar">
+      <div class="track" id="track" tabindex="0"></div>
+      <div class="status" id="status">Türler yükleniyor…</div>
+      <span class="counter" id="counter" hidden></span>
+      <button type="button" class="nav prev" id="prevPh" aria-label="Önceki fotoğraf" hidden><svg class="ic"><use href="#i-left"/></svg></button>
+      <button type="button" class="nav next" id="nextPh" aria-label="Sonraki fotoğraf" hidden><svg class="ic"><use href="#i-right"/></svg></button>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </section>
+    <p class="credit" id="credit"></p>
 
-  <details class="settings">
-    <summary>Ayarlar</summary>
-    <div class="body">
-      <label>Mod
+    <p class="prompt" id="prompt" hidden>Bu hangi mantar?</p>
+    <div class="opts" id="opts"></div>
+
+    <section class="result" id="label" hidden></section>
+
+    <aside class="warning">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <p><b>Toplama kararı için kullanma.</b> Bu bir öğrenme aracı. Fotoğraftan tür tayini güvenilir değildir; ölümcül türlerin yenen benzerleri vardır. Toplayacağın mantarı mutlaka uzman birine gösterip elden teşhis ettir. Fotoğraflar ve gözlem sayıları iNaturalist'ten (araştırma düzeyi, lisanslı), açıklamalar Wikipedia'dan gelir.</p>
+    </aside>
+  </main>
+</div>
+
+<div class="actionbar" id="actionbar" hidden>
+  <div class="actionbar-in">
+    <button type="button" class="btn primary" id="reveal" hidden>Kartı çevir</button>
+    <button type="button" class="btn" id="gotWrong" hidden>Bilemedim</button>
+    <button type="button" class="btn primary" id="gotRight" hidden>Bildim</button>
+    <button type="button" class="btn primary" id="nextBtn" hidden>Sonraki kart <svg class="ic sm"><use href="#i-right"/></svg></button>
+  </div>
+</div>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheetTitle">
+  <div class="sheet-head">
+    <h2 id="sheetTitle">Ayarlar</h2>
+    <button type="button" class="icon-btn" id="sheetClose" aria-label="Kapat"><svg class="ic"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="sheet-body">
+    <section>
+      <h3>Konum</h3>
+      <div class="row2">
+        <label class="field"><span>Bölge</span>
+          <span class="select"><select id="region"></select><svg class="ic sm"><use href="#i-down"/></svg></span>
+        </label>
+        <label class="field"><span>İl</span>
+          <span class="select"><select id="province"></select><svg class="ic sm"><use href="#i-down"/></svg></span>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h3>Oyun</h3>
+      <div class="field"><span>Mod</span>
         <div class="seg" id="mode">
           <button type="button" data-v="mc" aria-pressed="true">Çoktan seçmeli</button>
           <button type="button" data-v="flip" aria-pressed="false">Kartı çevir</button>
         </div>
-      </label>
-      <label>Şıklar
+      </div>
+      <div class="field"><span>Şıklar</span>
         <div class="seg" id="diff">
           <button type="button" data-v="easy" aria-pressed="false">Karışık</button>
           <button type="button" data-v="hard" aria-pressed="true">Benzer türler</button>
         </div>
-      </label>
-      <label for="alpha">Yaygın türlere ağırlık: <span id="alphaV"></span>
-        <input type="range" id="alpha" min="0" max="100" step="5" value="70">
-        <span class="hint">Sağa çektikçe seçtiğin yerde çok gözlenen türler daha sık gelir; solda tüm türler eşit.</span>
-      </label>
-      <label for="pool">Tür havuzu: en çok gözlenen <span id="poolV"></span> tür
-        <input type="range" id="pool" min="20" max="200" step="10" value="80">
-      </label>
-      <label>Sadece
+      </div>
+      <div class="field"><span>Sadece</span>
         <div class="seg" id="filter">
           <button type="button" data-v="all" aria-pressed="true">Hepsi</button>
           <button type="button" data-v="food" aria-pressed="false">Yenir + benzerleri</button>
           <button type="button" data-v="danger" aria-pressed="false">Zehirliler</button>
         </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Tür havuzu</h3>
+      <label class="field" for="alpha"><span>Yaygın türlere ağırlık <output id="alphaV"></output></span>
+        <input type="range" id="alpha" min="0" max="100" step="5" value="70">
+        <small class="hint">Sağa çektikçe seçtiğin yerde çok gözlenen türler daha sık gelir; solda tüm türler eşit.</small>
       </label>
+      <label class="field" for="pool"><span>En çok gözlenen <output id="poolV"></output> tür</span>
+        <input type="range" id="pool" min="20" max="200" step="10" value="80">
+      </label>
+    </section>
+
+    <section class="sheet-actions">
+      <button type="button" class="btn primary" id="install" hidden>Uygulamayı yükle</button>
       <button type="button" class="btn" id="resetStats">İstatistikleri sıfırla</button>
-    </div>
-  </details>
-
-  <div class="plate" id="plate">
-    <span class="tag" id="obsTag" hidden></span>
-    <img id="photo" alt="" hidden>
-    <div class="status" id="status">Türler yükleniyor…</div>
-    <button type="button" class="more" id="another" hidden>Başka foto ↻</button>
+    </section>
   </div>
-  <div class="credit" id="credit"></div>
-
-  <div class="opts" id="opts"></div>
-  <div class="flipbar" id="flipbar" hidden>
-    <button type="button" class="btn" id="reveal">Kartı çevir</button>
-  </div>
-  <div class="flipbar" id="selfgrade" hidden>
-    <button type="button" class="btn" id="gotWrong">Bilemedim</button>
-    <button type="button" class="btn primary" id="gotRight">Bildim</button>
-  </div>
-
-  <section class="label" id="label" hidden></section>
-
-  <div class="next"><button type="button" class="btn primary" id="nextBtn" hidden>Sonraki kart →</button></div>
-
-  <p class="warning"><b>Toplama kararı için kullanma.</b> Bu bir öğrenme aracı. Fotoğraftan tür tayini güvenilir değildir; ölümcül türlerin yenen benzerleri vardır. Toplayacağın mantarı mutlaka uzman birine gösterip elden teşhis ettir. Fotoğraflar ve gözlem sayıları iNaturalist'ten (araştırma düzeyi, lisanslı), açıklamalar Wikipedia'dan gelir.</p>
-</div>
+</dialog>
 
 <div class="zoom" id="zoom" hidden><img id="zoomImg" alt=""></div>
 </body>
